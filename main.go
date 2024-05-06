@@ -30,7 +30,6 @@ func main() {
 			wg.Done()
 		}()
 
-	loop:
 		for j := 0; ; j++ {
 			r1 := atomic.LoadInt64(&x[0])
 			r2 := atomic.LoadInt64(&x[2048])
@@ -38,7 +37,7 @@ func main() {
 				log.Fatalf("ordering is broken. r1=%d, r2=%d, (i,j)=(%d,%d)", r1, r2, i, j)
 			}
 			if r1 == 2 {
-				break loop
+				break
 			}
 		}
 
