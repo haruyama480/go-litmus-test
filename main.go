@@ -7,8 +7,8 @@ import (
 )
 
 const LEN = 4096
-const STRIDE = 999
-const N = 100
+const STRIDE = 2047
+const N = 10
 const EPOCH = 100000
 const EPOCH_N = 60
 
@@ -22,13 +22,9 @@ func main() {
 			log.Printf("i=%d", i)
 		}
 
-		idx := 0
-		for j := 0; j < N; j++ {
-			indices[j] = idx
-			idx += STRIDE
-			idx %= LEN
+		indices = [N]int{
+			1, 2, 3, 1001, 4, 1002, 5, 1003, 6, 1004,
 		}
-
 		for j := 0; j < N; j++ {
 			atomic.StoreInt64(&x[indices[j]], 0)
 		}
