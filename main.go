@@ -32,6 +32,7 @@ func main() {
 			wg.Done()
 		}()
 
+	loop:
 		for j := 0; ; j++ {
 			for k := LEN - STRIDE; k > 0; k -= STRIDE {
 				r1 := atomic.LoadInt64(&x[k])
@@ -39,9 +40,9 @@ func main() {
 				if r1 == 1 && r2 == 0 {
 					log.Fatalf("ordering is broken. r1=%d, r2=%d, (i,j,k)=(%d,%d,%d)", r1, r2, i, j, k)
 				}
-			}
-			if x[LEN-STRIDE] == 1 {
-				break
+				if r1 == 1 {
+					break loop
+				}
 			}
 		}
 
