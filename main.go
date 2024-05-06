@@ -6,32 +6,41 @@ import (
 	"sync/atomic"
 )
 
-var x, y int64
+const LEN = 4096
+const STRIDE = 32
+const EPOCH = 100000
+const EPOCH_N = 60
+
+var x [LEN]int64
 
 func main() {
-	epoch := int64(1000000)
-	for i := int64(0); i < epoch*60; i++ {
-		if i%epoch == 0 {
+	for i := int64(0); i < EPOCH*EPOCH_N; i++ {
+		if i%EPOCH == 0 {
 			log.Printf("i=%d", i)
 		}
-		atomic.StoreInt64(&x, 0)
-		atomic.StoreInt64(&y, 0)
+
+		for j := 0; j < LEN; j += STRIDE {
+			atomic.StoreInt64(&x[j], 0)
+		}
 
 		wg := sync.WaitGroup{}
 		wg.Add(1)
 		go func() {
-			atomic.StoreInt64(&x, 1)
-			atomic.StoreInt64(&y, 1)
+			for j := 0; j < LEN; j += STRIDE {
+				atomic.StoreInt64(&x[j], 1)
+			}
 			wg.Done()
 		}()
 
 		for j := 0; ; j++ {
-			r1 := atomic.LoadInt64(&y)
-			r2 := atomic.LoadInt64(&x)
-			if r1 == 1 && r2 == 0 {
-				log.Fatalf("ordering is broken. r1=%d, r2=%d", r1, r2)
+			for k := LEN - STRIDE; k > 0; k -= STRIDE {
+				r1 := atomic.LoadInt64(&x[k])
+				r2 := atomic.LoadInt64(&x[k-STRIDE])
+				if r1 == 1 && r2 == 0 {
+					log.Fatalf("ordering is broken. r1=%d, r2=%d, (i,j,k)=(%d,%d,%d)", r1, r2, i, j, k)
+				}
 			}
-			if r1 == 1 {
+			if x[LEN-STRIDE] == 1 {
 				break
 			}
 		}
