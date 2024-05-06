@@ -7,14 +7,10 @@ import (
 )
 
 const LEN = 4096
-const STRIDE = 2047
-const N = 10
 const EPOCH = 100000
 const EPOCH_N = 60
 
 var x [LEN]int64
-
-var indices [N]int
 
 func main() {
 	for i := int64(0); i < EPOCH*EPOCH_N; i++ {
@@ -22,33 +18,27 @@ func main() {
 			log.Printf("i=%d", i)
 		}
 
-		indices = [N]int{
-			1, 2, 3, 1001, 4, 1002, 5, 1003, 6, 1004,
-		}
-		for j := 0; j < N; j++ {
-			atomic.StoreInt64(&x[indices[j]], 0)
-		}
+		atomic.StoreInt64(&x[0], 0)
+		atomic.StoreInt64(&x[2048], 0)
 
 		wg := sync.WaitGroup{}
 		wg.Add(1)
 		go func() {
-			for j := 0; j < N; j++ {
-				atomic.StoreInt64(&x[indices[j]], 1)
-			}
+			atomic.StoreInt64(&x[0], 1)
+			atomic.StoreInt64(&x[2048], 1)
+			atomic.StoreInt64(&x[0], 2)
 			wg.Done()
 		}()
 
 	loop:
 		for j := 0; ; j++ {
-			for k := N - 1; k > 0; k-- {
-				r1 := atomic.LoadInt64(&x[indices[k]])
-				r2 := atomic.LoadInt64(&x[indices[k-1]])
-				if r1 == 1 && r2 == 0 {
-					log.Fatalf("ordering is broken. r1=%d, r2=%d, (i,j,k)=(%d,%d,%d)", r1, r2, i, j, k)
-				}
-				if r1 == 1 {
-					break loop
-				}
+			r1 := atomic.LoadInt64(&x[0])
+			r2 := atomic.LoadInt64(&x[2048])
+			if r1 == 2 && r2 == 0 {
+				log.Fatalf("ordering is broken. r1=%d, r2=%d, (i,j)=(%d,%d)", r1, r2, i, j)
+			}
+			if r1 == 2 {
+				break loop
 			}
 		}
 
