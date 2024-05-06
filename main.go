@@ -7,11 +7,14 @@ import (
 )
 
 const LEN = 4096
-const STRIDE = 32
+const STRIDE = 999
+const N = 100
 const EPOCH = 100000
 const EPOCH_N = 60
 
 var x [LEN]int64
+
+var indices [N]int
 
 func main() {
 	for i := int64(0); i < EPOCH*EPOCH_N; i++ {
@@ -19,24 +22,31 @@ func main() {
 			log.Printf("i=%d", i)
 		}
 
-		for j := 0; j < LEN; j += STRIDE {
-			atomic.StoreInt64(&x[j], 0)
+		idx := 0
+		for j := 0; j < N; j++ {
+			indices[j] = idx
+			idx += STRIDE
+			idx %= LEN
+		}
+
+		for j := 0; j < N; j++ {
+			atomic.StoreInt64(&x[indices[j]], 0)
 		}
 
 		wg := sync.WaitGroup{}
 		wg.Add(1)
 		go func() {
-			for j := 0; j < LEN; j += STRIDE {
-				atomic.StoreInt64(&x[j], 1)
+			for j := 0; j < N; j++ {
+				atomic.StoreInt64(&x[indices[j]], 1)
 			}
 			wg.Done()
 		}()
 
 	loop:
 		for j := 0; ; j++ {
-			for k := LEN - STRIDE; k > 0; k -= STRIDE {
-				r1 := atomic.LoadInt64(&x[k])
-				r2 := atomic.LoadInt64(&x[k-STRIDE])
+			for k := N - 1; k > 0; k-- {
+				r1 := atomic.LoadInt64(&x[indices[k]])
+				r2 := atomic.LoadInt64(&x[indices[k-1]])
 				if r1 == 1 && r2 == 0 {
 					log.Fatalf("ordering is broken. r1=%d, r2=%d, (i,j,k)=(%d,%d,%d)", r1, r2, i, j, k)
 				}
